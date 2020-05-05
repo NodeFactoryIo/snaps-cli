@@ -1,18 +1,50 @@
 
 const fs = require('fs')
+const path = require('path')
 const browserify = require('browserify')
 const stripComments = require('strip-comments')
 // const terser = require('terser')
 
 const { logError } = require('./utils')
 
+const lavamoatOpts = {
+  config: './lavamoat-config.json',
+  writeAutoConfig: true,
+}
+const lavamoatPluginOpts = [
+  [ 'lavamoat-browserify', lavamoatOpts ],
+]
+// These globals are already added to the snaps-beta as endowments,
+// and so do not need to initiate warnings yet:
+const permittedGlobals = [
+  'console',
+  'BigInt',
+  'setInterval',
+  'clearInterval',
+  'setTimeout',
+  'clearTimeout',
+  'crypto',
+  'crypto.getRandomValues',
+  'SubtleCrypto',
+  'fetch',
+  'XMLHttpRequest',
+  'WebSocket',
+  'Buffer',
+  'Date',
+  'MessageChannel',
+  'atob',
+  'btoa',
+  'define',
+]
+
+
 module.exports = {
-  bundle,
+  bundle: bundle,
 }
 
 /**
  * Builds a Snap bundle JSON file from its JavaScript source.
- * 
+ *
  * @param {string} src - The source file path
  * @param {string} dest - The destination file path
  * @param {object} argv - argv from Yargs
@@ -20,6 +52,11 @@ module.exports = {
  * @param {boolean} argv.stripComments - Whether to remove comments from code
  */
 function bundle(src, dest, argv) {
+
+  // Warn about global usage by default:
+  if (!argv.suppressWarnings) {
+    analyzeGlobalUsage(src, dest, argv)
+  }
 
   return new Promise((resolve, _reject) => {
 
@@ -48,11 +85,104 @@ function bundle(src, dest, argv) {
           if (bundle) {
             console.log(`Build success: '${src}' bundled as '${dest}'!`)
           }
+
           resolve(true)
         })
         .catch((err) => writeError('Write error:', err.message, err, dest))
       })
   })
+}
+
+/**
+ * Opens a stream to write the destination file path.
+ *
+ * @param {string} dest - The output file path
+ * @returns {object} - The stream
+ */
+function createBundleStream (dest) {
+  const stream = fs.createWriteStream(dest, {
+    autoClose: false,
+    encoding: 'utf8',
+  })
+  stream.on('error', err => {
+    writeError('Write error:', err.message, err, dest)
+  })
+  return stream
+}
+
+/**
+ * Builds the entire snap using lava-moat for purposes of generating a lavamoat-config file.
+ * This file will allow us to identify obviously required global APIs, allowing the plugin to request them.
+ *
+ * @param {string} src - The source file path
+ * @param {string} dest - The destination file path
+ * @param {object} argv - argv from Yargs
+ * @param {boolean} argv.sourceMaps - Whether to output sourcemaps
+ */
+function analyzeGlobalUsage(src, dest, argv) {
+
+  return new Promise((resolve, _reject) => {
+
+    const bundleStream = createBundleStream(dest)
+
+    browserify(src, {
+      debug: argv.sourceMaps,
+      plugin: lavamoatPluginOpts,
+    })
+
+      // TODO: Just give up on babel, which we may not even need?
+      // This creates globals that SES doesn't like
+      // .transform('babelify', {
+      //   presets: ['@babel/preset-env'],
+      // })
+      .bundle((err, bundle) => {
+
+        if (err) writeError('Build error:', err)
+
+        // TODO: minification, probably?
+        // const { error, code } = terser.minify(bundle.toString())
+        // if (error) {
+        //   writeError('Build error:', error.message, error, dest)
+        // }
+        // closeBundleStream(bundleStream, code.toString())
+
+        closeBundleStream(bundleStream, bundle ? bundle.toString() : null)
+        .then(() => {
+          if (!bundle) {
+            return console.log(`Lava build failed, unable to analyze for global API usage.`)
+          }
+
+          const lavaConfigString = fs.readFileSync(path.join(process.cwd(), 'lavamoat-config.json')).toString()
+          const lavaConfig = JSON.parse(lavaConfigString)
+          const requiredGlobals = listGlobals(lavaConfig)
+          if (requiredGlobals.length > 0) {
+            console.log(`Your snap bundle requires access to global APIs that are not available to a MetaMask Snap's environment by default. We will make these APIs requestible permissions, but for now you will need to fork MetaMask to allow these APIs to be used within MetaMask. You can refer to this pull request for reference of how: https://github.com/MetaMask/metamask-snaps-beta/pull/134`)
+            console.log(`Your required global APIs are:\n- ${requiredGlobals.join('\n- ')}`)
+          }
+
+          resolve(true)
+        })
+        .catch((err) => writeError('Write error:', err.message, err, dest))
+      })
+  })
+}
+
+function listGlobals (lavamoatConfig) {
+  const globalSet = new Set()
+  for (let module in lavamoatConfig.resources) {
+    if (lavamoatConfig.resources[module].globals) {
+      for (let global in lavamoatConfig.resources[module].globals) {
+        globalSet.add(global)
+      }
+    }
+  }
+  const globalArr = []
+  for (let entry of globalSet) {
+    if (!permittedGlobals.includes(entry)) {
+      globalArr.push(entry)
+    }
+  }
+  return globalArr
 }
 
 /**
@@ -93,7 +223,7 @@ async function closeBundleStream (stream, bundleString, options) {
  * - makes all direct calls to eval indirect
  * - wraps original bundle in anonymous function
  * - handles certain Babel-related edge cases
- * 
+ *
  * @param {string} bundleString - The bundle string
  * @param {object} options - post process options
  * @param {boolean} options.stripComments
