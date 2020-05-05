@@ -146,7 +146,7 @@ function analyzeGlobalUsage(src, dest, argv) {
         // }
         // closeBundleStream(bundleStream, code.toString())
 
-        closeBundleStream(bundleStream, bundle ? bundle.toString() : null)
+        closeBundleStream(bundleStream, bundle ? bundle.toString() : null, {})
         .then(() => {
           if (!bundle) {
             return console.log(`Lava build failed, unable to analyze for global API usage.`)
