@@ -1,4 +1,3 @@
-
 const fs = require('fs')
 const browserify = require('browserify')
 const stripComments = require('@nodefactory/strip-comments')
