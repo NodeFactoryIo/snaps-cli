@@ -1,6 +1,6 @@
 {
   "name": "@nodefactory/snaps-cli",
-  "version": "1.0.0",
+  "version": "1.4.0",
   "description": "A CLI for developing MetaMask Snaps.",
   "main": "snaps-cli.js",
   "scripts": {
