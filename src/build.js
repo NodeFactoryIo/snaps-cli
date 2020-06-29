@@ -1,7 +1,7 @@
 
 const fs = require('fs')
 const browserify = require('browserify')
-const stripComments = require('strip-comments')
+const stripComments = require('@nodefactory/strip-comments')
 // const terser = require('terser')
 
 const { logError } = require('./utils')
