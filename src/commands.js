@@ -47,9 +47,9 @@ async function init (argv) {
 /**
  * Builds all files in the given source directory to the given destination
  * directory.
- * 
+ *
  * Creates destination directory if it doesn't exist.
- * 
+ *
  * @param {object} argv - argv from Yargs
  * @param {string} argv.src - The source file path
  * @param {string} argv.dist - The output directory path
@@ -78,10 +78,10 @@ async function build (argv) {
 /**
  * Watch a directory and its subdirectories for changes, and build when files
  * are added or changed.
- * 
+ *
  * Ignores 'node_modules' and dotfiles.
  * Creates destination directory if it doesn't exist.
- * 
+ *
  * @param {object} argv - argv from Yargs
  * @param {string} argv.src - The source file path
  * @param {string} argv.dist - The output directory path
@@ -137,7 +137,7 @@ async function watch(argv) {
 /**
  * Starts a local, static HTTP server on the given port with the given root
  * directory.
- * 
+ *
  * @param {object} argv - argv from Yargs
  * @param {string} argv.root - The root directory path string
  * @param {number} argv.port - The server port
@@ -172,7 +172,7 @@ async function serve (argv) {
     }
     process.exit(1)
   })
-  
+
   server.on('close', () => {
     console.log('Server closed')
     process.exit(1)

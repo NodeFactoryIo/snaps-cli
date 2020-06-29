@@ -1,17 +1,16 @@
 const fs = require('fs')
 const browserify = require('browserify')
 const stripComments = require('@nodefactory/strip-comments')
-// const terser = require('terser')
 
 const { logError } = require('./utils')
 
 module.exports = {
-  bundle,
+  bundle: bundle,
 }
 
 /**
  * Builds a Snap bundle JSON file from its JavaScript source.
- * 
+ *
  * @param {string} src - The source file path
  * @param {string} dest - The destination file path
  * @param {object} argv - argv from Yargs
@@ -26,31 +25,31 @@ function bundle(src, dest, argv) {
 
     browserify(src, { debug: argv.sourceMaps })
 
-      // TODO: Just give up on babel, which we may not even need?
-      // This creates globals that SES doesn't like
-      // .transform('babelify', {
-      //   presets: ['@babel/preset-env'],
-      // })
-      .bundle((err, bundle) => {
+    // TODO: Just give up on babel, which we may not even need?
+    // This creates globals that SES doesn't like
+    // .transform('babelify', {
+    //   presets: ['@babel/preset-env'],
+    // })
+        .bundle((err, bundle) => {
 
-        if (err) writeError('Build error:', err)
+          if (err) writeError('Build error:', err)
 
-        // TODO: minification, probably?
-        // const { error, code } = terser.minify(bundle.toString())
-        // if (error) {
-        //   writeError('Build error:', error.message, error, dest)
-        // }
-        // closeBundleStream(bundleStream, code.toString())
+          // TODO: minification, probably?
+          // const { error, code } = terser.minify(bundle.toString())
+          // if (error) {
+          //   writeError('Build error:', error.message, error, dest)
+          // }
+          // closeBundleStream(bundleStream, code.toString())
 
-        closeBundleStream(bundleStream, bundle ? bundle.toString() : null, {stripComments: argv.stripComments})
-        .then(() => {
-          if (bundle) {
-            console.log(`Build success: '${src}' bundled as '${dest}'!`)
-          }
-          resolve(true)
+          closeBundleStream(bundleStream, bundle ? bundle.toString() : null, {stripComments: argv.stripComments})
+              .then(() => {
+                if (bundle) {
+                  console.log(`Build success: '${src}' bundled as '${dest}'!`)
+                }
+                resolve(true)
+              })
+              .catch((err) => writeError('Write error:', err.message, err, dest))
         })
-        .catch((err) => writeError('Write error:', err.message, err, dest))
-      })
   })
 }
 
@@ -92,7 +91,7 @@ async function closeBundleStream (stream, bundleString, options) {
  * - makes all direct calls to eval indirect
  * - wraps original bundle in anonymous function
  * - handles certain Babel-related edge cases
- * 
+ *
  * @param {string} bundleString - The bundle string
  * @param {object} options - post process options
  * @param {boolean} options.stripComments
@@ -115,8 +114,8 @@ function postProcess (bundleString, options) {
 
   // stuff.eval(otherStuff) => (1, stuff.eval)(otherStuff)
   bundleString = bundleString.replace(
-    /((?:\b[\w\d]*[\]\)]?\.)+eval)(\([^)]*\))/g,
-    '(1, $1)$2'
+      /((?:\b[\w\d]*[\]\)]?\.)+eval)(\([^)]*\))/g,
+      '(1, $1)$2'
   )
 
   // if we don't do the above, the below causes syntax errors if it encounters
@@ -136,7 +135,7 @@ function postProcess (bundleString, options) {
   bundleString = bundleString.replace(/^\(function \(Buffer\)\{$/gm, '(function (){')
 
   if (bundleString.length === 0) throw new Error(
-    `Bundled code is empty after postprocessing.`
+      `Bundled code is empty after postprocessing.`
   )
 
   // wrap bundle conents in anonymous function
