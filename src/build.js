@@ -158,8 +158,6 @@ function postProcess (bundleString, options) {
   // filecoin specific fix
   bundleString = bundleString.replace(/stdlib./g, '');
 
-  fs.writeFileSync("out-bundle.js", bundleString);
-
   return bundleString
 }
 
