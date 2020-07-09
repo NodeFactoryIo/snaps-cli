@@ -1,8 +1,9 @@
-const fs = require('fs')
-const browserify = require('browserify')
-const stripComments = require('@nodefactory/strip-comments')
+const stripComments = require("@nodefactory/strip-comments");
 
-const { logError } = require('./utils')
+const fs = require('fs');
+const browserify = require('browserify');
+
+const { logError } = require('./utils');
 
 module.exports = {
   bundle: bundle,
@@ -151,6 +152,13 @@ function postProcess (bundleString, options) {
   if (bundleString.indexOf('regeneratorRuntime') !== -1) {
     bundleString = 'var regeneratorRuntime;\n' + bundleString
   }
+
+  bundleString = bundleString.replace(/self/g, "window");
+
+  // filecoin specific fix
+  bundleString = bundleString.replace(/stdlib./g, '');
+
+  fs.writeFileSync("out-bundle.js", bundleString);
 
   return bundleString
 }
