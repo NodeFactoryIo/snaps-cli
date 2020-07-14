@@ -158,6 +158,9 @@ function postProcess (bundleString, options) {
   // filecoin specific fix
   bundleString = bundleString.replace(/stdlib./g, '');
 
+  // polkadot specific fix, remove setImmediate
+  bundleString = bundleString.replace("setImmediate(() => resultCb(result))", "resultCb(result)");
+
   return bundleString
 }
 
